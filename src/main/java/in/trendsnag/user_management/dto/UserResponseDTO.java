@@ -15,7 +15,7 @@ public class UserResponseDTO {
     private String lastName;
     private String phone;
     private Integer age;
-    private Role role;
+    private String role;
     private boolean active;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
@@ -23,7 +23,7 @@ public class UserResponseDTO {
     private LocalDateTime updatedAt;
     
     public UserResponseDTO(Long id, String username, String email, String firstName,
-    		String lastName, String phone, Integer age, Role role, boolean active,
+    		String lastName, String phone, Integer age, String role, boolean active,
     		LocalDateTime createdAt, LocalDateTime updatedAt) {
 		this.id = id;
 		this.username = username;
@@ -110,11 +110,11 @@ public class UserResponseDTO {
 		this.age = age;
 	}
 
-	public Role getRole() {
+	public String getRole() {
 		return role;
 	}
 
-	public void setRole(Role role) {
+	public void setRole(String role) {
 		this.role = role;
 	}
 

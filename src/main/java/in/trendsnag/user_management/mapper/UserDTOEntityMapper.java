@@ -1,8 +1,11 @@
 package in.trendsnag.user_management.mapper;
 
+
 import in.trendsnag.user_management.dto.UserRequestDTO;
 import in.trendsnag.user_management.dto.UserResponseDTO;
 import in.trendsnag.user_management.model.User;
+import in.trendsnag.user_management.model.Role;
+
 
 public class UserDTOEntityMapper {
 
@@ -14,7 +17,7 @@ public class UserDTOEntityMapper {
         user.setLastName(dto.getLastName());
         user.setPhone(dto.getPhone());
         user.setAge(dto.getAge());
-        user.setRole(dto.getRole()); // Assumes Role is already parsed from String enum
+        //user.setRole(Role.valueOf(dto.getRole().toUpperCase())); // Assumes Role is already parsed from String enum
         user.setPassword(dto.getPassword());
 		return user;
 	}
@@ -28,7 +31,7 @@ public class UserDTOEntityMapper {
             user.getLastName(),
             user.getPhone(),
             user.getAge(),
-            user.getRole(),
+            user.getRole().name(),
             user.isActive(),
             user.getCreatedAt(),
             user.getUpdatedAt());

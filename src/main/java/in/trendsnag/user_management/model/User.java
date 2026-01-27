@@ -1,6 +1,7 @@
 package in.trendsnag.user_management.model;
 
 import java.time.LocalDateTime;
+import in.trendsnag.user_management.model.Role;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -14,7 +15,6 @@ public class User {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	
 	private Long id;
 	
 	@Column(name = "username",nullable = false, unique = true)
@@ -98,9 +98,9 @@ public class User {
 		return role;
 	}
 
-	public void setRole(String role) {
+	public void setRole(Role role) {
 	    try {
-	        this.role = Role.valueOf(role.toUpperCase());
+	        this.role = role;
 	    } catch (IllegalArgumentException ex) {
 	        throw new IllegalArgumentException("Invalid role: " + role);
 	    }

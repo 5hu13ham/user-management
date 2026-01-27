@@ -23,8 +23,18 @@ private String email;
 @Size(min = 6, message = "Password must be at least 6 characters")
 private String password;
 
-@NotBlank(message = "Not an option to leave it blank, are you an ADMIN, a USER, or a MODERATOR")
+/**
+@NotBlank(message = "Role is required")
+@Size(min = 4, max = 10)
 private String role;
+
+TODO:
+- Add JWT-based authentication
+- Restrict role updates to ADMIN only
+- Create separate AdminUserUpdateRoleDTO
+- Protect endpoint using Spring Security (@PreAuthorize)
+
+**/
 
 @NotBlank(message = "Enter a unique username")
 private String username;
@@ -32,7 +42,7 @@ private String username;
 @Pattern(regexp = "^\\d{10}$")
 private String phone;
 
-@Min(value = 10, message = "Age must be atleast 10")
+@Min(value = 18, message = "Age must be atleast 18")
 @Max(value = 99, message = "Need proof of your age more than 99")
 private Integer age;
 
@@ -95,12 +105,12 @@ public void setPassword(String password) {
 	this.password = password;
 }
 
-public String getRole() {
+/**public String getRole() {
 	return role;
 }
 
 public void setRole(String role) {
 	this.role = role;
-}
+}**/
 
 }

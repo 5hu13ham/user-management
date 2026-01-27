@@ -19,12 +19,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import in.trendsnag.user_management.dto.UserRequestDTO;
 import in.trendsnag.user_management.dto.UserResponseDTO;
+import in.trendsnag.user_management.exception.GlobalExceptionHandler;
 import in.trendsnag.user_management.mapper.UserDTOEntityMapper;
 import in.trendsnag.user_management.model.User;
+import in.trendsnag.user_management.payload.ApiErrorResponse;
 import in.trendsnag.user_management.payload.ApiResponse;
 import in.trendsnag.user_management.service.UserService;
 import jakarta.validation.Valid;
-
+import org.slf4j.*;
 
 @RestController
 @RequestMapping("/users")
@@ -33,14 +35,34 @@ public class UserController {
 	@Autowired
 	private UserService userService;
 	
+	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+	
 	@PostMapping
-	public ResponseEntity<ApiResponse<UserResponseDTO>> createUser(@Valid @RequestBody UserRequestDTO requestDTO){
-		User user = UserDTOEntityMapper.toEntity(requestDTO);
-		User created = userService.createUser(user);
-		UserResponseDTO responseDTO = UserDTOEntityMapper.toResponseDTO(created);
-		ApiResponse<UserResponseDTO> apiResponse = new ApiResponse<>("User Creation Successful", responseDTO);
-		return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+	public ResponseEntity<?> createUser(@Valid @RequestBody UserRequestDTO requestDTO) {
+	    logger.info("Received request to create a new user with username: {}", requestDTO.getUsername());
+	    
+	    try {
+	        User user = UserDTOEntityMapper.toEntity(requestDTO);
+	        User created = userService.createUser(user);
+	        UserResponseDTO responseDTO = UserDTOEntityMapper.toResponseDTO(created);
+
+	        logger.info("User created successfully with ID: {}", created.getId());
+	        return ResponseEntity.ok(new ApiResponse<>("User Creation Successful", responseDTO));
+
+	    } catch (Exception ex) {
+	        logger.error("Error occurred while creating user: {}", ex.getMessage(), ex);
+
+	        ApiErrorResponse errorResponse = new ApiErrorResponse(
+	                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+	                "User creation failed",
+	                ex.getMessage(), // or a generic message
+	                "/users"
+	            );
+	        
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+	    }
 	}
+
 	
 	@PutMapping("/{id}")
 	public ResponseEntity<ApiResponse<UserResponseDTO>> updateUser(@Valid @PathVariable Long id,@RequestBody UserRequestDTO requestDTO){
@@ -48,6 +70,10 @@ public class UserController {
 		User updated = userService.updateUser(id, user);
 		UserResponseDTO responseDTO = UserDTOEntityMapper.toResponseDTO(updated);
 		ApiResponse<UserResponseDTO> apiResponse = new ApiResponse<>("User updated to new values", responseDTO);
+		
+		logger.info("Updated all information for the user with ID: {} and username: {} in the database.", id, user.getUsername());
+
+		
 		return ResponseEntity.status(HttpStatus.OK).body(apiResponse);
 	}
 	
@@ -67,6 +93,9 @@ public class UserController {
 	            .toList();
 
 	    ApiResponse<List<UserResponseDTO>> apiResponse = new ApiResponse<>("Data of all users", responseDTO);
+	    
+	    logger.info("Request received to fetch all users, page: {}, size: {}, sort: {} {}", page, size, sort[0], sort[1]);
+	    
 	    return ResponseEntity.status(HttpStatus.OK).body(apiResponse);
 	}
 
@@ -105,22 +134,33 @@ public class UserController {
 	        data
 	    );
 
+	    logger.info("Filtering users with keyword: {}, role: {}, active: {}, deleted: {}, ageGroup: {}", 
+	             keyword, role, active, deleted, ageGroup);
+
+	    
 	    return ResponseEntity.ok(response);
 	}
 
 	
 	@GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponseDTO>> getUserById(@PathVariable Long id) {
+		logger.info("GET /api/users/{} called", id);
 		User user = userService.findUserById(id);
 		UserResponseDTO responseDTO = UserDTOEntityMapper.toResponseDTO(user);
 		ApiResponse<UserResponseDTO> apiResponse = new ApiResponse<>("Here's the information you require", responseDTO);
-        return ResponseEntity.status(HttpStatus.OK).body(apiResponse);
+        
+		logger.info("Response: {}", apiResponse);
+		
+		return ResponseEntity.status(HttpStatus.OK).body(apiResponse);
     }
 	
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse<UserResponseDTO>> softDeleteUser(@PathVariable Long id){
 		userService.softDeleteUser(id);
 		ApiResponse<UserResponseDTO> apiResponse = new ApiResponse<>("User deleted successfully", null);
+		
+		logger.warn("Soft delete requested for user with ID: {}", id);
+
 		return ResponseEntity.status(HttpStatus.OK).body(apiResponse);
 	}
 }
