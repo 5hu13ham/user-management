@@ -1,7 +1,11 @@
 package in.trendsnag.user_management.security;
 
 import io.jsonwebtoken.*;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+
+import in.trendsnag.user_management.model.User;
 
 import java.util.Date;
 
@@ -14,9 +18,12 @@ public class JwtUtil {
     private final long EXPIRATION = 60 * 60 * 1000;
 
     // Generate JWT token
-    public String generateToken(String identifier) {
+    public String generateToken(Authentication authentication) {
+    	
+    	User user = (User) authentication.getPrincipal();
         return Jwts.builder()
-                .setSubject(identifier)
+                .setSubject(user.getUsername())
+                .claim("role", user.getRole().name())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(SignatureAlgorithm.HS256, SECRET)

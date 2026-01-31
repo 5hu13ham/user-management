@@ -1,7 +1,9 @@
 package in.trendsnag.user_management.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 import in.trendsnag.user_management.dto.UserLoginRequest;
 import in.trendsnag.user_management.dto.UserLoginResponse;
@@ -11,34 +13,26 @@ import in.trendsnag.user_management.security.JwtUtil;
 @Service
 public class LoginService {
 	
-	private final UserAuthService userAuthService;
-	private final BCryptPasswordEncoder passwordEncoder;
+	private final AuthenticationManager authenticationManager;
 	private final JwtUtil jwtUtil;
 	
-	public LoginService(UserAuthService userAuthService,
-			            BCryptPasswordEncoder passwordEncoder,
+	public LoginService(AuthenticationManager authenticationManager,
 			            JwtUtil jwtUtil) {
 		
-		this.userAuthService = userAuthService;
-		this.passwordEncoder = passwordEncoder;
+		this.authenticationManager = authenticationManager;
 		this.jwtUtil = jwtUtil;
 	}
 	
-	public User login(UserLoginRequest loginRequest) {
+	public UserLoginResponse login(UserLoginRequest loginRequest) {
 
-        // Step 1 → get the user
-        User user = userAuthService.findByIdentifier(loginRequest.getIdentifier());
-
-        // Step 2 → verify password
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid password");
-        }
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getIdentifier(), loginRequest.getPassword()));
 
         // Step 3 → generate token
-        String token = jwtUtil.generateToken(loginRequest.getIdentifier());
+        String token = jwtUtil.generateToken(authentication);
 
+        User user = (User) authentication.getPrincipal();
         // Step 4 → return response DTO
-        return user;
+        return new UserLoginResponse(token, user.getUsername(), user.getRole().name());
         
   
 	}
