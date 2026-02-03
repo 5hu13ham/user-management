@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
 	
 	List<User> findByRole(Role role);
 	
-	@Query("SELECT u FROM User u WHERE u.active = :active AND u.deleted = false")
+	@Query("SELECT u FROM User u WHERE u.active = :active AND u.isDeleted = false")
 	List<User> findByActive(@Param("active") boolean active);
 	
 	List<User> findByFirstNameContaining(String keyword);

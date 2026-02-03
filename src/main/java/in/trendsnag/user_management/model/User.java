@@ -55,7 +55,7 @@ public class User implements UserDetails{
 	private boolean active;
 	
 	@Column(name = "is_deleted")
-	private boolean deleted = false;
+	private boolean isDeleted = false;
 	
 
 	@Column(nullable = false)
@@ -76,7 +76,7 @@ public class User implements UserDetails{
 
 	@Override
 	public boolean isAccountNonLocked() {
-	    return !deleted;
+	    return !isDeleted;
 	}
 
 	@Override
@@ -86,18 +86,18 @@ public class User implements UserDetails{
 
 	@Override
 	public boolean isEnabled() {
-	    return active;
+	    return active && !isDeleted;
 	}
 
 	
 	
 	public boolean isDeleted() {
-		return deleted;
+		return isDeleted;
 	}
 
 
 	public void setDeleted(boolean deleted) {
-		this.deleted = deleted;
+		this.isDeleted = deleted;
 	}
 	
 	

@@ -2,6 +2,7 @@ package in.trendsnag.user_management.security;
 
 import io.jsonwebtoken.*;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -12,8 +13,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private final String SECRET = "Irunupthehillfallandcomebackcryingtomom";
-
+    @Value("${jwt.secret}")
+    private String SECRET;
     // 1 hour validity
     private final long EXPIRATION = 60 * 60 * 1000;
 
