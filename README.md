@@ -37,6 +37,26 @@ A full-stack user management application built with Spring Boot and React, featu
 
 ---
 
+## System Architecture Overview
+
+This project follows a **production-grade layered architecture** and is designed to be **cloud-native and Kubernetes deployable**.
+
+Architecture:
+- REST-based microservice backend (Spring Boot)
+- JWT-based stateless authentication
+- Role-based access control (RBAC)
+- Dockerized packaging
+- Kubernetes-ready deployment model
+- CI/CD-friendly structure
+
+Flow:
+Client → API Gateway / Load Balancer → Spring Boot Service → Database
+
+The system is designed keeping **scalability, security, observability, and cloud deployment best practices** in mind.
+
+
+---
+
 ## Backend Project Structure
 
 src/
@@ -137,15 +157,8 @@ Security Highlights:
 - Role-based authorization via Spring Security
 - Centralized exception handling
 - Secure CORS configuration
-- Future Enhancements
 - Angular/React admin dashboard
 
-## Refresh token support
-
-- Swagger / OpenAPI documentation
-- Redis caching
-- CI/CD pipeline
- - Cloud deployment (AWS / GCP free tier)
 
 Author
 Shubham Kumar
