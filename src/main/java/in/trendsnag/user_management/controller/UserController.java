@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -38,6 +39,7 @@ public class UserController {
 	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 	
 	@PostMapping
+	@PreAuthorize("hasAuthority('USER_WRITE')")
 	public ResponseEntity<?> createUser(@Valid @RequestBody UserRequestDTO requestDTO) {
 	    logger.info("Received request to create a new user with username: {}", requestDTO.getUsername());
 	    
@@ -65,6 +67,7 @@ public class UserController {
 
 	
 	@PutMapping("/{id}")
+	@PreAuthorize("hasAuthority('USER_WRITE')")
 	public ResponseEntity<ApiResponse<UserResponseDTO>> updateUser(@Valid @PathVariable Long id,@RequestBody UserRequestDTO requestDTO){
 		User user = UserDTOEntityMapper.toEntity(requestDTO);
 		User updated = userService.updateUser(id, user);
@@ -78,6 +81,7 @@ public class UserController {
 	}
 	
 	@GetMapping
+	@PreAuthorize("hasAuthority('ADMIN_READ')")
 	public ResponseEntity<ApiResponse<List<UserResponseDTO>>> getAllUsers(
 	        @RequestParam(defaultValue = "0") int page,
 	        @RequestParam(defaultValue = "5") int size,
@@ -100,6 +104,7 @@ public class UserController {
 	}
 
 	@GetMapping("/filter-search")
+	@PreAuthorize("hasAuthority('ADMIN_READ')")
 	public ResponseEntity<ApiResponse<Map<String, Object>>> filterAndSearchUsers(
 	    @RequestParam(required = false) String keyword,
 	    @RequestParam(required = false) String role,
@@ -143,6 +148,7 @@ public class UserController {
 
 	
 	@GetMapping("/{id}")
+	@PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<ApiResponse<UserResponseDTO>> getUserById(@PathVariable Long id) {
 		logger.info("GET /api/users/{} called", id);
 		User user = userService.findUserById(id);
@@ -155,6 +161,8 @@ public class UserController {
     }
 	
 	@DeleteMapping("/{id}")
+	@PreAuthorize("hasAuthority('ADMIN_WRITE')")
+
 	public ResponseEntity<ApiResponse<UserResponseDTO>> softDeleteUser(@PathVariable Long id){
 		userService.softDeleteUser(id);
 		ApiResponse<UserResponseDTO> apiResponse = new ApiResponse<>("User deleted successfully", null);

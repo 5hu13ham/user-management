@@ -1,4 +1,6 @@
 import {useEffect, useState} from 'react'
+import { pingBackend } from "./api/backend";
+
 function App() {
   const [status, setStatus] = useState("Checking Backend...")
 
@@ -15,6 +17,10 @@ function App() {
     })
     .catch((err) => setStatus("Backend Unreachable"))
   }, [])
+
+  pingBackend()
+  .then((data) => setStatus(data))
+  .catch(() => setStatus("Backend Unreachable"));
 
   return (
      <div style={{ padding: "20px" }}>

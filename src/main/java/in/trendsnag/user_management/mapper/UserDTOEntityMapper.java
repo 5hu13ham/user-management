@@ -31,7 +31,7 @@ public class UserDTOEntityMapper {
             user.getLastName(),
             user.getPhone(),
             user.getAge(),
-            user.getRole().name(),
+            user.getRole().getName(),
             user.isActive(),
             user.getCreatedAt(),
             user.getUpdatedAt());

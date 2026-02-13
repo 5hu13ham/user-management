@@ -4,6 +4,7 @@ package in.trendsnag.user_management.service;
 import in.trendsnag.user_management.dto.UserResponseDTO;
 import in.trendsnag.user_management.mapper.UserDTOEntityMapper;
 import in.trendsnag.user_management.model.*;
+import in.trendsnag.user_management.repository.RoleRepository;
 import in.trendsnag.user_management.repository.UserRepository;
 import jakarta.transaction.Transactional;
 
@@ -65,6 +66,8 @@ public class UserService implements UserServiceInterface{
 	@Autowired
 	private PasswordEncoder passwordEncoder;
 	
+	@Autowired
+	private RoleRepository roleRepository;
 	
 	@Override
 	public User createUser(User user) {
@@ -248,7 +251,7 @@ public class UserService implements UserServiceInterface{
 	public long countByRole(String role) {
 		// TODO Auto-generated method stub
 		try {
-	        Role roleEnum = Role.valueOf(role.toUpperCase());
+	        Role roleEnum = roleRepository.findByName(role.toUpperCase());
 	        return userRepository.countByRole(roleEnum);
 	    } catch (IllegalArgumentException ex) {
 	    	throw new IllegalArgumentException("Invalid role: " + role + ". Allowed: ADMIN, USER, MODERATOR");

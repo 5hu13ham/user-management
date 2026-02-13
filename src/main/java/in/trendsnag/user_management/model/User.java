@@ -2,7 +2,9 @@ package in.trendsnag.user_management.model;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import in.trendsnag.user_management.model.Role;
 
@@ -41,15 +43,27 @@ public class User implements UserDetails{
 	@Column
 	private Integer age;
 	
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, updatable = false)
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "role_id", nullable = false, updatable = false)
 	private Role role;
 	
 	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities(){
-		return List.of(
-				new SimpleGrantedAuthority("ROLE_"+role.name()));
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+
+	    Set<GrantedAuthority> authorities = new HashSet<>();
+
+	    // Role authority
+	    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+
+	    // Permission authorities
+	    role.getPermissions()
+	        .forEach(permission ->
+	            authorities.add(new SimpleGrantedAuthority(permission.getName()))
+	        );
+
+	    return authorities;
 	}
+
 	
 	@Column(name = "active", nullable = false)
 	private boolean active;

@@ -1,5 +1,9 @@
 package in.trendsnag.user_management.service;
 
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -8,13 +12,17 @@ import org.springframework.stereotype.Service;
 
 import in.trendsnag.user_management.dto.UserLoginResponse;
 import in.trendsnag.user_management.dto.UserRegisterRequest;
+import in.trendsnag.user_management.model.Permission;
 import in.trendsnag.user_management.model.Role;
 import in.trendsnag.user_management.model.User;
+import in.trendsnag.user_management.repository.RoleRepository;
 import in.trendsnag.user_management.repository.UserRepository;
 import in.trendsnag.user_management.security.JwtUtil;
 
 @Service
 public class RegisterService {
+	
+	private RoleRepository roleRepository;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -42,8 +50,9 @@ public class RegisterService {
     	mapIdentifier(user, identifier);
 
     	user.setPassword(passwordEncoder.encode(request.getPassword()));
-    	user.setRole(Role.USER);
-    	user.setActive(true);
+    	Role defaultRole = roleRepository.findByName("ROLE_USER");
+
+    	user.setRole(defaultRole);    	user.setActive(true);
     	
     	userRepository.save(user);
     	
@@ -54,7 +63,20 @@ public class RegisterService {
     	
         String token = jwtUtil.generateToken(auth);
 
-        return new UserLoginResponse(token, user.getUsername(), user.getRole().name());
+
+        Set<String> permissions =
+        	    user.getRole().getPermissions()
+        	        .stream()
+        	        .map(Permission::getName)
+        	        .collect(Collectors.toSet());
+
+        	return new UserLoginResponse(
+        	    token,
+        	    user.getUsername(),
+        	    user.getRole().getName(),
+        	    permissions
+        	);
+        	
     }
 
 	private boolean userExists(String identifier) 
