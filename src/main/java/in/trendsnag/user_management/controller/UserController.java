@@ -22,9 +22,11 @@ import in.trendsnag.user_management.dto.UserRequestDTO;
 import in.trendsnag.user_management.dto.UserResponseDTO;
 import in.trendsnag.user_management.exception.GlobalExceptionHandler;
 import in.trendsnag.user_management.mapper.UserDTOEntityMapper;
+import in.trendsnag.user_management.model.Employee;
 import in.trendsnag.user_management.model.User;
 import in.trendsnag.user_management.payload.ApiErrorResponse;
 import in.trendsnag.user_management.payload.ApiResponse;
+import in.trendsnag.user_management.service.EmployeeService;
 import in.trendsnag.user_management.service.UserService;
 import jakarta.validation.Valid;
 import org.slf4j.*;
@@ -36,7 +38,15 @@ public class UserController {
 	@Autowired
 	private UserService userService;
 	
+	@Autowired
+	private EmployeeService employeeService;
+	
 	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+	
+	@GetMapping("/employees-with-dept")
+	public List<Employee> getEmployeesWithDept() {
+	    return employeeService.getEmployeesWithDept();
+	}
 	
 	@PostMapping
 	@PreAuthorize("hasAuthority('USER_WRITE')")
