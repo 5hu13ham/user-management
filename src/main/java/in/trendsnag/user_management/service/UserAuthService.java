@@ -29,13 +29,13 @@ public class UserAuthService implements UserDetailsService {
 	public User findByIdentifier(String identifier) {
 	    if (identifier.contains("@")) {
 	        return userRepository.findByEmail(identifier)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+	            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 	    } else if (identifier.matches("\\d+")) {
 	        return userRepository.findByPhone(identifier)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+	            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 	    } else {
 	        return userRepository.findByUsername(identifier)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+	            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 	    }
 	}
 }
