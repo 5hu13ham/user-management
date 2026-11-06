@@ -1,269 +1,101 @@
 package in.trendsnag.user_management.service;
 
-
-import in.trendsnag.user_management.dto.UserResponseDTO;
-import in.trendsnag.user_management.mapper.UserDTOEntityMapper;
-import in.trendsnag.user_management.model.*;
+import in.trendsnag.user_management.dto.UserRequestDTO;
+import in.trendsnag.user_management.model.Role;
+import in.trendsnag.user_management.model.User;
 import in.trendsnag.user_management.repository.RoleRepository;
 import in.trendsnag.user_management.repository.UserRepository;
-import jakarta.transaction.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.*;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-interface UserServiceInterface {
-	
-	User createUser(User user);
-	User updateUser(Long id, User user);
-	void deleteUser(Long id);
-	
-	Page<User> getAllUsers(Pageable pageable);
-	User findUserById(Long id);
-	Optional<User> findUserByUsername(String username);
-	Optional<User> findUserByEmail(String email);
-	
-	List<User> findByRole(Role role);
-	List<User> findByActive(boolean active);
-	List<User> findByFirstNameContaining(String keyword);
-	
-	void softDeleteUser (Long id);
-	
-	boolean isUsernameExists(String username);
-	
-	long countByRole(String role);
-	long countByActive(boolean active);
-	
-	//UserResponseDTO updateUserByAdmin(Long id, UserRequestDTO requestDTO);
-	void toggleUserActiveStatus(Long id, boolean isActive);
-	
-	Page<User> FilterSearchSortUsers(
-		    String keyword,
-		    String role,
-		    Boolean active,
-		    Boolean deleted,
-		    String ageGroup,
-		    int page,
-		    int size,
-		    String sortByField,
-		    String sortDirection
-		);
-
-}
+import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 
 @Service
-@Transactional
-public class UserService implements UserServiceInterface{
-	
-	@Autowired
-	private UserRepository userRepository;
+public class UserService {
+    private final UserRepository users;
+    private final RoleRepository roles;
+    private final PasswordEncoder encoder;
 
-	@Autowired
-	private PasswordEncoder passwordEncoder;
-	
-	@Autowired
-	private RoleRepository roleRepository;
-	
-	@Override
-	public User createUser(User user) {
-		// TODO Auto-generated method stub
-		
-		if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-		    throw new IllegalArgumentException("Username taken, try another one");
-		}
-		
-		if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-			throw new IllegalArgumentException("Email already exists");
-		}
+    public UserService(UserRepository users, RoleRepository roles, PasswordEncoder encoder) {
+        this.users=users; this.roles=roles; this.encoder=encoder;
+    }
 
-		user.setPassword(passwordEncoder.encode(user.getPassword()));
-		user.setActive(true);
-        user.setRole(roleRepository.findByName("USER")
-                .orElseThrow(() -> new IllegalStateException("Default USER role is not initialized")));
-		return userRepository.save(user);
-	}
+    public User createUser(UserRequestDTO dto) {
+        if (dto.getPassword()==null || dto.getPassword().isBlank())
+            throw new IllegalArgumentException("Password is required for new users");
+        ensureUnique(dto.getUsername(), dto.getEmail(), dto.getPhone(), null);
+        Role role=roles.findByName("USER")
+                .orElseThrow(() -> new IllegalStateException("Default USER role is not initialized"));
+        User user=new User();
+        applyEditableFields(user,dto);
+        user.setRole(role);
+        user.setPassword(encoder.encode(dto.getPassword()));
+        user.setActive(true);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        return users.save(user);
+    }
 
-	@Override
-	public User updateUser(Long id, User user) {
-	    User existingUser = userRepository.findActiveUserById(id)
-	        .orElseThrow(() -> new NoSuchElementException("User not found with id: " + id));
-	    
-	    if (!existingUser.getUsername().equals(user.getUsername()) &&
-	            userRepository.findByUsername(user.getUsername()).isPresent()) {
-	            throw new IllegalArgumentException("Username already taken");
-	        }
+    public User updateUser(String id, UserRequestDTO dto) {
+        User existing=findUserById(id);
+        ensureUnique(dto.getUsername(),dto.getEmail(),dto.getPhone(),id);
+        applyEditableFields(existing,dto);
+        if (dto.getPassword()!=null && !dto.getPassword().isBlank()) {
+            existing.setPassword(encoder.encode(dto.getPassword()));
+        }
+        existing.setUpdatedAt(LocalDateTime.now());
+        return users.save(existing);
+    }
 
-	    if (!existingUser.getEmail().equals(user.getEmail()) &&
-	            userRepository.findByEmail(user.getEmail()).isPresent()) {
-	            throw new IllegalArgumentException("Email already exists");
-	        }
-	    existingUser.setUsername(user.getUsername());
-	    existingUser.setEmail(user.getEmail());
-	    existingUser.setFirstName(user.getFirstName());
-	    existingUser.setLastName(user.getLastName());
-	    existingUser.setPhone(user.getPhone());
-	    existingUser.setAge(user.getAge());
-	    existingUser.setUpdatedAt(LocalDateTime.now());
+    private void applyEditableFields(User user, UserRequestDTO dto) {
+        user.setUsername(dto.getUsername());
+        user.setEmail(dto.getEmail());
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setPhone(dto.getPhone()==null || dto.getPhone().isBlank()?null:dto.getPhone());
+        user.setAge(dto.getAge());
+    }
 
-	    String password = user.getPassword();
-	    if (password != null && !password.isBlank()) {
-	        existingUser.setPassword(passwordEncoder.encode(password));
-	    }
+    private void ensureUnique(String username, String email, String phone, String id) {
+        if (users.findByUsername(username).filter(u -> !u.getId().equals(id)).isPresent())
+            throw new IllegalArgumentException("Username already exists");
+        if (users.findByEmail(email).filter(u -> !u.getId().equals(id)).isPresent())
+            throw new IllegalArgumentException("Email already exists");
+        if (phone!=null && !phone.isBlank()
+                && users.findByPhone(phone).filter(u -> !u.getId().equals(id)).isPresent())
+            throw new IllegalArgumentException("Phone number already exists");
+    }
 
-	    return userRepository.save(existingUser);
-	  
-	}
-/*	
-	public UserResponseDTO updateUserByAdmin(Long id, UserRequestDTO requestDTO) {
-	    User existingUser = userRepository.findActiveUserById(id)
-	        .orElseThrow(() -> new NoSuchElementException("User not found with id: " + id));
+    public Page<User> list(int page, int size) {
+        if (page<0 || size<1 || size>100) throw new IllegalArgumentException("Invalid page or size");
+        return users.findByIsDeletedFalse(PageRequest.of(page,size,Sort.by("username").ascending()));
+    }
 
-	    // Only allow update if username is not taken by someone else
-	    if (!existingUser.getUsername().equals(requestDTO.getUsername()) &&
-	        userRepository.findByUsername(requestDTO.getUsername()).isPresent()) {
-	        throw new IllegalArgumentException("Username already taken");
-	    }
+    public Page<User> filter(String keyword, String role, Boolean active, Boolean deleted,
+                             String ageGroup, int page, int size, String sortBy, String sortDir) {
+        return users.FilterSearchSortUsers(keyword,role,active,deleted,ageGroup,page,size,sortBy,sortDir);
+    }
 
-	    // Only allow update if email is not taken by someone else
-	    if (!existingUser.getEmail().equals(requestDTO.getEmail()) &&
-	        userRepository.findByEmail(requestDTO.getEmail()).isPresent()) {
-	        throw new IllegalArgumentException("Email already exists");
-	    }
+    public User findUserById(String id) {
+        return users.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+    }
 
-	    existingUser.setUsername(requestDTO.getUsername());
-	    existingUser.setEmail(requestDTO.getEmail());
-	    existingUser.setFirstName(requestDTO.getFirstName());
-	    existingUser.setLastName(requestDTO.getLastName());
-	    existingUser.setPhone(requestDTO.getPhone());
-	    existingUser.setAge(requestDTO.getAge());
+    public void softDeleteUser(String id) {
+        User user=findUserById(id);
+        user.setActive(false);
+        user.setDeleted(true);
+        user.setUpdatedAt(LocalDateTime.now());
+        users.save(user);
+    }
 
-	    User updatedUser = userRepository.save(existingUser);
-	    return UserDTOEntityMapper.toResponseDTO(updatedUser);
-	}
-	*/
-	
-	@Override
-	public Page<User> FilterSearchSortUsers(
-	    String keyword,
-	    String role,
-	    Boolean active,
-	    Boolean deleted,
-	    String ageGroup,
-	    int page,
-	    int size,
-	    String sortByField,
-	    String sortDirection
-	) {
-	    return userRepository.FilterSearchSortUsers(
-	        keyword, role, active, deleted, ageGroup, page, size, sortByField, sortDirection
-	    );
-	}
-
-	
-	public void toggleUserActiveStatus(Long id, boolean isActive) {
-	    User user = userRepository.findActiveUserById(id)
-	        .orElseThrow(() -> new NoSuchElementException("User not found"));
-
-	    user.setActive(isActive);
-	    user.setDeleted(false);
-	    userRepository.save(user);
-	}
-
-
-
-
-	@Override
-	public void deleteUser(Long id) {
-		// TODO Auto-generated method stub
-		userRepository.deleteById(id);
-	}
-
-	@Override
-	public Page<User> getAllUsers(Pageable pageable) {
-		// TODO Auto-generated method stub
-		
-		return userRepository.findByIsDeletedFalse(pageable);
-		
-	}
-
-	@Override
-	public User findUserById(Long id) {
-	    return userRepository.findById(id)
-	            .filter(user -> !user.isDeleted())
-	            .orElseThrow(() -> new NoSuchElementException("No user exists with this ID"));
-	}
-	@Override
-	public Optional<User> findUserByUsername(String username) {
-		// TODO Auto-generated method stub
-		
-		return userRepository.findByUsername(username);
-	}
-
-	@Override
-	public Optional<User> findUserByEmail(String email) {
-		// TODO Auto-generated method stub
-		return userRepository.findByEmail(email);
-	}
-
-	@Override
-	public List<User> findByRole(Role role) {
-		// TODO Auto-generated method stub
-		
-		return userRepository.findByRole(role);
-	}
-
-	@Override
-	public List<User> findByActive(boolean active) {
-		// TODO Auto-generated method stub
-		return userRepository.findByActive(active);
-	}
-
-	@Override
-	public List<User> findByFirstNameContaining(String keyword) {
-		// TODO Auto-generated method stub
-
-	    return userRepository.findByFirstNameContaining(keyword);
-	}
-
-	@Override
-	public void softDeleteUser(Long id) {
-		// TODO Auto-generated method stub
-		User user = userRepository.findActiveUserById(id)
-				.orElseThrow(() -> new NoSuchElementException("User not found with id: "+id));
-		
-		user.setActive(false);
-		user.setDeleted(true);
-		userRepository.save(user);
-		
-	}
-
-	@Override
-	public boolean isUsernameExists(String username) {
-		// TODO Auto-generated method stub
-		return userRepository.findByUsername(username).isPresent();
-	}
-
-	@Override
-	public long countByRole(String role) {
-		// TODO Auto-generated method stub
-		try {
-	        Role roleEnum = roleRepository.findByName(role.toUpperCase())
-                .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + role));
-	        return userRepository.countByRole(roleEnum);
-	    } catch (IllegalArgumentException ex) {
-	    	throw new IllegalArgumentException("Invalid role: " + role + ". Allowed: ADMIN, USER, MODERATOR");
-	    }
-	}
-
-	@Override
-	public long countByActive(boolean active) {
-		// TODO Auto-generated method stub
-		return userRepository.countByActive(active);
-	}
-	
+    public User setActive(String id, boolean active) {
+        User user=findUserById(id);
+        user.setActive(active);
+        user.setUpdatedAt(LocalDateTime.now());
+        return users.save(user);
+    }
 }
