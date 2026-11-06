@@ -1,29 +1,52 @@
-name: Backend tests
+name: Backend and frontend checks
 
 on:
   push:
     branches:
       - main
+      - "feature/**"
       - "fix/**"
   pull_request:
-    paths:
-      - "pom.xml"
-      - "src/**"
-      - ".github/workflows/backend-tests.yml"
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping').ok\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
-      - name: Run Maven unit and integration tests
-        run: mvn -B -ntp test
+      - name: Run backend tests with MongoDB
+        run: mvn -B -ntp verify
+
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: user-management-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: user-management-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
