@@ -27,7 +27,7 @@ public class RoleDataInitializer implements CommandLineRunner {
         Permission adminRead = ensurePermission("ADMIN_READ");
         Permission adminWrite = ensurePermission("ADMIN_WRITE");
 
-        ensureRole("USER", Set.of(userRead));
+        ensureRole("USER", Set.of());
         ensureRole("ADMIN", Set.of(userRead, userWrite, adminRead, adminWrite));
         // Intentional: no default administrator account or hard-coded password.
     }
