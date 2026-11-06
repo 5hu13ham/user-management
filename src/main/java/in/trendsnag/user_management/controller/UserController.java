@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/users")
 public class UserController {
