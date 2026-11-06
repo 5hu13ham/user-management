@@ -12,8 +12,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,7 +32,6 @@ public class RegisterService {
         this.jwtUtil = jwtUtil;
     }
 
-    @Transactional
     public UserLoginResponse register(UserRegisterRequest request) {
         if (users.findByUsername(request.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username already exists");
@@ -56,6 +55,8 @@ public class RegisterService {
         user.setPassword(encoder.encode(request.getPassword()));
         user.setRole(defaultRole);
         user.setActive(true);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
         user = users.save(user);
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
