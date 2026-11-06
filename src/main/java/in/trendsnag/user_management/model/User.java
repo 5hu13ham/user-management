@@ -17,7 +17,7 @@ public class User implements UserDetails {
     @Id private String id;
     @Indexed(unique = true) private String username;
     @Indexed(unique = true) private String email;
-    @Indexed(unique = true, sparse = true) private String phone;
+    @Indexed(unique = true, partialFilter = "{ 'phone': { '$type': 'string' } }") private String phone;
     private String firstName;
     private String lastName;
     private Integer age;
