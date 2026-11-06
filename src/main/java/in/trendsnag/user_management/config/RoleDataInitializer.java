@@ -48,7 +48,7 @@ public class RoleDataInitializer implements CommandLineRunner {
             return roles.save(newRole);
         });
         if (role.getPermissions().isEmpty()) {
-            role.setPermissions(defaultPermissions);
+            role.setPermissions(new java.util.HashSet<>(defaultPermissions));
             roles.save(role);
         }
     }
