@@ -1,7 +1,6 @@
 package in.trendsnag.user_management.model;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.HashSet;
 import java.util.Set;
@@ -9,7 +8,7 @@ import java.util.Set;
 @Document(collection = "roles")
 public class Role {
     @Id private String id;
-    @Indexed(unique = true) private String name;
+    private String name;
     private Set<Permission> permissions = new HashSet<>();
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
