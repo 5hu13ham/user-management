@@ -1,15 +1,5 @@
 package in.trendsnag.user_management.service;
 
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import in.trendsnag.user_management.dto.UserLoginResponse;
 import in.trendsnag.user_management.dto.UserRegisterRequest;
 import in.trendsnag.user_management.model.Permission;
@@ -18,105 +8,61 @@ import in.trendsnag.user_management.model.User;
 import in.trendsnag.user_management.repository.RoleRepository;
 import in.trendsnag.user_management.repository.UserRepository;
 import in.trendsnag.user_management.security.JwtUtil;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class RegisterService {
-	
-	private RoleRepository roleRepository;
-
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserRepository users;
+    private final RoleRepository roles;
+    private final PasswordEncoder encoder;
     private final JwtUtil jwtUtil;
 
-    public RegisterService(UserRepository userRepository,
-                           PasswordEncoder passwordEncoder,
-                           JwtUtil jwtUtil) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+    public RegisterService(UserRepository users, RoleRepository roles,
+                           PasswordEncoder encoder, JwtUtil jwtUtil) {
+        this.users = users;
+        this.roles = roles;
+        this.encoder = encoder;
         this.jwtUtil = jwtUtil;
     }
 
-    public UserLoginResponse register(UserRegisterRequest request) 
-    {
-    	String identifier = request.getIdentifier();
-    	
-    	if (userExists(identifier))
-    	{
-    		throw new RuntimeException("User Already Exists");
-    	}
-    	
-    	User user = new User();
-    	
-    	mapIdentifier(user, identifier);
-
-    	user.setPassword(passwordEncoder.encode(request.getPassword()));
-    	Role defaultRole = roleRepository.findByName("ROLE_USER");
-
-    	user.setRole(defaultRole);    	user.setActive(true);
-    	
-    	userRepository.save(user);
-    	
-    	Authentication auth = new UsernamePasswordAuthenticationToken(
-    			user,
-    			null,
-    			user.getAuthorities());
-    	
-        String token = jwtUtil.generateToken(auth);
-
-
-        Set<String> permissions =
-        	    user.getRole().getPermissions()
-        	        .stream()
-        	        .map(Permission::getName)
-        	        .collect(Collectors.toSet());
-
-        	return new UserLoginResponse(
-        	    token,
-        	    user.getUsername(),
-        	    user.getRole().getName(),
-        	    permissions
-        	);
-        	
-    }
-
-	private boolean userExists(String identifier) 
-	{
-		// TODO Auto-generated method stub
-		
-		if (identifier.contains("@"))
-		{
-			if (userRepository.findByEmail(identifier)!=null)
-				return true;
-		return false;
-		}
-		
-		else if (identifier.matches("\\d+"))
-		{
-			if (userRepository.findByPhone(identifier)!=null)
-					return true;
-			return false;
-		}
-		
-		else
-		{
-			if (userRepository.findByUsername(identifier)!=null)
-				return true;
-			return false;
-	
-		}
-	}
-	
-	private void mapIdentifier(User user, String identifier) {
-        if (identifier.contains("@")) {
-            user.setEmail(identifier);
-            user.setUsername(identifier.split("@")[0]);
-        } else if (identifier.matches("\\d+")) {
-            user.setPhone(identifier);
-            user.setUsername(identifier);
-        } else {
-            user.setUsername(identifier);
+    @Transactional
+    public UserLoginResponse register(UserRegisterRequest request) {
+        if (users.findByUsername(request.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
         }
+        if (users.findByEmail(request.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && users.findByPhone(request.getPhone()).isPresent()) {
+            throw new IllegalArgumentException("Phone number already exists");
+        }
+
+        Role defaultRole = roles.findByName("USER")
+                .orElseThrow(() -> new IllegalStateException("Default USER role is not initialized"));
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setPhone(request.getPhone() == null || request.getPhone().isBlank() ? null : request.getPhone());
+        user.setPassword(encoder.encode(request.getPassword()));
+        user.setRole(defaultRole);
+        user.setActive(true);
+        user = users.save(user);
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                user, null, user.getAuthorities());
+        String token = jwtUtil.generateToken(auth);
+        Set<String> permissions = user.getRole().getPermissions().stream()
+                .map(Permission::getName).collect(Collectors.toSet());
+        return new UserLoginResponse(token, user.getUsername(), user.getRole().getName(), permissions);
     }
-    
-    
 }
