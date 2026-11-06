@@ -83,7 +83,8 @@ public class UserService implements UserServiceInterface{
 
 		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		user.setActive(true);
-		
+        user.setRole(roleRepository.findByName("USER")
+                .orElseThrow(() -> new IllegalStateException("Default USER role is not initialized")));
 		return userRepository.save(user);
 	}
 
@@ -110,7 +111,7 @@ public class UserService implements UserServiceInterface{
 	    existingUser.setUpdatedAt(LocalDateTime.now());
 
 	    String password = user.getPassword();
-	    if (!password.startsWith("$2a$") && !password.startsWith("$2b$") && !password.startsWith("$2y$")) {
+	    if (password != null && !password.isBlank()) {
 	        existingUser.setPassword(passwordEncoder.encode(password));
 	    }
 
@@ -251,7 +252,8 @@ public class UserService implements UserServiceInterface{
 	public long countByRole(String role) {
 		// TODO Auto-generated method stub
 		try {
-	        Role roleEnum = roleRepository.findByName(role.toUpperCase());
+	        Role roleEnum = roleRepository.findByName(role.toUpperCase())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + role));
 	        return userRepository.countByRole(roleEnum);
 	    } catch (IllegalArgumentException ex) {
 	    	throw new IllegalArgumentException("Invalid role: " + role + ". Allowed: ADMIN, USER, MODERATOR");
