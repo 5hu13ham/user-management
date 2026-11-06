@@ -157,8 +157,16 @@ public class UserController {
 	}
 
 	
+	@GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponseDTO>> getCurrentUser(
+            org.springframework.security.core.Authentication authentication) {
+        User current = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(new ApiResponse<>(
+                "Current user", UserDTOEntityMapper.toResponseDTO(current)));
+    }
+
 	@GetMapping("/{id}")
-	@PreAuthorize("hasAuthority('USER_READ')")
+	@PreAuthorize("hasAuthority('ADMIN_READ')")
     public ResponseEntity<ApiResponse<UserResponseDTO>> getUserById(@PathVariable Long id) {
 		logger.info("GET /api/users/{} called", id);
 		User user = userService.findUserById(id);
