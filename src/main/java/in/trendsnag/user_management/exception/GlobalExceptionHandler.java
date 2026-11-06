@@ -4,6 +4,8 @@ import in.trendsnag.user_management.payload.ApiErrorResponse;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
@@ -74,6 +76,26 @@ public class GlobalExceptionHandler {
                 request.getDescription(false).replace("uri=", ""));
 
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(
+            AccessDeniedException exception, WebRequest request) {
+        return new ResponseEntity<>(
+                new ApiErrorResponse(HttpStatus.FORBIDDEN.value(), "Forbidden",
+                        "Insufficient permissions",
+                        request.getDescription(false).replace("uri=", "")),
+                HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthenticated(
+            AuthenticationException exception, WebRequest request) {
+        return new ResponseEntity<>(
+                new ApiErrorResponse(HttpStatus.UNAUTHORIZED.value(), "Unauthorized",
+                        "Invalid credentials",
+                        request.getDescription(false).replace("uri=", "")),
+                HttpStatus.UNAUTHORIZED);
     }
 
     // Fallback for all other exceptions
