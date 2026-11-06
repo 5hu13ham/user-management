@@ -34,8 +34,8 @@ public class ApiErrorResponse {
 		return status;
 	}
 
-	public int getPath() {
-		return status;
+	public String getPath() {
+		return path;
 	}
 	
 }
