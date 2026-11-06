@@ -1,107 +1,60 @@
 package in.trendsnag.user_management.repository;
-
-import java.util.List;
-
+import in.trendsnag.user_management.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-
-import in.trendsnag.user_management.model.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class UserRepositoryCustomImpl implements UserRepositoryCustom {
+    private static final Set<String> SORT_FIELDS =
+            Set.of("username", "email", "firstName", "lastName", "age", "createdAt", "role.name");
+    private final MongoTemplate mongoTemplate;
+    public UserRepositoryCustomImpl(MongoTemplate mongoTemplate) { this.mongoTemplate = mongoTemplate; }
 
-	@PersistenceContext
-	private EntityManager entityManager;
-	
-	@Override
-	public Page<User> FilterSearchSortUsers(
-			String keyword,
-	        String role,
-	        Boolean active,
-	        Boolean deleted,
-	        String ageGroup,
-	        int page,
-	        int size,
-	        String sortField,
-	        String sortDirection
-	        ){
-		
-		String baseQuery = "SELECT * FROM users WHERE 1=1";
-		String countQuery = "SELECT COUNT(*) FROM users WHERE 1=1";
-
-		StringBuilder filterBuilder = new StringBuilder();
-		
-		if (keyword != null && !keyword.isEmpty()) {
-		    filterBuilder.append(" AND (LOWER(username) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-		                 .append(" OR LOWER(email) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-		                 .append(" OR LOWER(first_name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-		                 .append(" OR LOWER(last_name) LIKE LOWER(CONCAT('%', :keyword, '%')))");
-		}
-
-		if (role != null) filterBuilder.append(" AND role = :role");
-		
-		if (active != null) filterBuilder.append(" AND active = :active");
-		
-		if (deleted != null) filterBuilder.append(" AND is_deleted = :deleted");
-
-		if (ageGroup != null) {
-		    switch (ageGroup.toLowerCase()) {
-			    case "toddlers":
-			    	filterBuilder.append(" AND age < 13");
-			    	break;		    	
-		        case "teenagers":
-		            filterBuilder.append(" AND age BETWEEN 13 AND 19");
-		            break;
-		        case "adults":
-		            filterBuilder.append(" AND age BETWEEN 20 AND 59");
-		            break;
-		        case "elderly":
-		            filterBuilder.append(" AND age >= 60");
-		            break;
-		    }
-		}
-		
-		String order = "";
-		List<String> allowedSortFields = List.of("username", "email", "first_name", "last_name", "age", "role");
-		if (allowedSortFields.contains(sortField)) {
-		    order = " ORDER BY " + sortField + ("desc".equalsIgnoreCase(sortDirection) ? " DESC" : " ASC");
-		}
-		
-		String finalQuery = baseQuery + filterBuilder + order + " LIMIT :limit OFFSET :offset";
-		String finalCountQuery = countQuery + filterBuilder;
-		
-		 Query nativeQuery = entityManager.createNativeQuery(finalQuery, User.class);
-	        Query countNativeQuery = entityManager.createNativeQuery(finalCountQuery);
-
-	        if (keyword != null && !keyword.isEmpty()) {
-	            nativeQuery.setParameter("keyword", keyword);
-	            countNativeQuery.setParameter("keyword", keyword);
-	        }
-	        if (role != null) {
-	            nativeQuery.setParameter("role", role);
-	            countNativeQuery.setParameter("role", role);
-	        }
-	        if (active != null) {
-	            nativeQuery.setParameter("active", active);
-	            countNativeQuery.setParameter("active", active);
-	        }
-	        if (deleted != null) {
-	            nativeQuery.setParameter("deleted", deleted);
-	            countNativeQuery.setParameter("deleted", deleted);
-	        }
-
-	        // Pagination
-	        nativeQuery.setParameter("limit", size);
-	        nativeQuery.setParameter("offset", page * size);
-
-	        @SuppressWarnings("unchecked")
-	        List<User> results = nativeQuery.getResultList();
-	        Number count = (Number) countNativeQuery.getSingleResult();
-
-	        return new PageImpl<>(results, PageRequest.of(page, size), count.longValue());
-	        
-	}
+    @Override
+    public Page<User> FilterSearchSortUsers(String keyword, String role, Boolean active,
+                                           Boolean deleted, String ageGroup, int page,
+                                           int size, String sortBy, String sortDir) {
+        if (page < 0 || size < 1 || size > 100)
+            throw new IllegalArgumentException("page must be >= 0 and size must be between 1 and 100");
+        if (!SORT_FIELDS.contains(sortBy))
+            throw new IllegalArgumentException("Unsupported sort field: " + sortBy);
+        if (!sortDir.equalsIgnoreCase("asc") && !sortDir.equalsIgnoreCase("desc"))
+            throw new IllegalArgumentException("sortDir must be asc or desc");
+        List<Criteria> filters = new ArrayList<>();
+        if (keyword != null && !keyword.isBlank()) {
+            if (keyword.length() > 100) throw new IllegalArgumentException("Search keyword is too long");
+            String regex = ".*" + Pattern.quote(keyword.strip()) + ".*";
+            filters.add(new Criteria().orOperator(
+                    Criteria.where("username").regex(regex, "i"),
+                    Criteria.where("email").regex(regex, "i"),
+                    Criteria.where("firstName").regex(regex, "i"),
+                    Criteria.where("lastName").regex(regex, "i")));
+        }
+        if (role != null && !role.isBlank()) filters.add(Criteria.where("role.name").is(role.toUpperCase()));
+        if (active != null) filters.add(Criteria.where("active").is(active));
+        filters.add(Criteria.where("isDeleted").is(deleted != null && deleted));
+        if (ageGroup != null && !ageGroup.isBlank()) {
+            switch (ageGroup.toLowerCase()) {
+                case "teenagers" -> filters.add(Criteria.where("age").gte(13).lte(19));
+                case "adults" -> filters.add(Criteria.where("age").gte(20).lte(59));
+                case "elderly" -> filters.add(Criteria.where("age").gte(60));
+                default -> throw new IllegalArgumentException("Unknown age group");
+            }
+        }
+        Criteria combined = filters.size() == 1 ? filters.get(0)
+                : new Criteria().andOperator(filters.toArray(new Criteria[0]));
+        long count = mongoTemplate.count(new Query(combined), User.class);
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+        PageRequest pageable = PageRequest.of(page, size, sort);
+        List<User> users = mongoTemplate.find(new Query(combined).with(pageable), User.class);
+        return new PageImpl<>(users, pageable, count);
+    }
 }
